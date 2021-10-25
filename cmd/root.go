@@ -82,7 +82,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 			case SIGUSR1:
 				mem := runtime.MemStats{}
 				runtime.ReadMemStats(&mem)
-				logrus.Info("stats:\n"+
+				logrus.Infof("stats:\n"+
 					"  %s, uptime: %s\n"+
 					"  goroutines: %d, mem-alloc: %d\n"+
 					"  connections open: %d total: %d",
@@ -97,11 +97,11 @@ func runAction(cmd *cobra.Command, args []string) error {
 		}
 	}()
 	//accept connections
-	logrus.Info("listening on " + source + " and forwarding to " + destination)
+	logrus.Infof("listening on %s and forwarding to %s", source, destination)
 	for {
 		uconn, err := l.Accept()
 		if err != nil {
-			logrus.Info("accept failed: %s", err)
+			logrus.Infof("accept failed: %s", err)
 			continue
 		}
 		go fwd(uconn, destination, quiet)
@@ -141,7 +141,7 @@ func fwd(uconn net.Conn, destination string, quiet bool) {
 	atomic.AddInt64(&current, 1)
 	//optional log
 	if !quiet {
-		logrus.Info("connection #%d (%d open)", atomic.LoadUint64(&total), atomic.LoadInt64(&current))
+		logrus.Infof("connection #%d (%d open)", atomic.LoadUint64(&total), atomic.LoadInt64(&current))
 	}
 	//pipe!
 	go func() {
