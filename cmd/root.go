@@ -14,6 +14,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -27,7 +28,9 @@ var rootCmd = &cobra.Command{
 func init() {
 	rootCmd.Flags().BoolP("quiet", "q", false, "Quiet mode")
 	rootCmd.Flags().StringP("source", "s", "", "Source address")
+	rootCmd.MarkFlagRequired("source")
 	rootCmd.Flags().StringP("destination", "d", "", "Destination address")
+	rootCmd.MarkFlagRequired("destination")
 }
 
 func Execute() {
@@ -47,14 +50,18 @@ var (
 	SIGTERM = syscall.Signal(0xf)
 )
 
-func listen(addr string) (net.Listener, error) {
-	//listen
-	network := "tcp"
-	if strings.HasPrefix(addr, "unix:") {
-		network = "unix"
-		addr = strings.TrimPrefix(addr, "unix:")
+func listen(url string) (net.Listener, error) {
+	parts := strings.SplitN(url, "://", 2)
+	if len(parts) != 2 {
+		return nil, errors.Errorf("invalid url: %s", url)
 	}
-	return net.Listen(network, addr)
+	proto := parts[0]
+	addr := parts[1]
+	listener, err := net.Listen(proto, addr)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return listener, err
 }
 
 func runAction(cmd *cobra.Command, args []string) error {
@@ -120,13 +127,14 @@ var pool = sync.Pool{
 	},
 }
 
-func dial(destination string) (net.Conn, error) {
-	network := "tcp"
-	if strings.HasPrefix(destination, "unix:") {
-		network = "unix"
-		destination = strings.TrimPrefix(destination, "unix:")
+func dial(url string) (net.Conn, error) {
+	parts := strings.SplitN(url, "://", 2)
+	if len(parts) != 2 {
+		return nil, errors.Errorf("invalid url: %s", url)
 	}
-	return net.Dial(network, destination)
+	proto := parts[0]
+	addr := parts[1]
+	return net.Dial(proto, addr)
 }
 
 func fwd(uconn net.Conn, destination string, quiet bool) {
